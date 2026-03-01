@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Semakan Wordwall & Analisis - BC SK Subang Jaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+        
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #f8fafc;
+        }
+
+        .sticky-col {
+            position: sticky;
+            left: 0;
+            background-color: white;
+            z-index: 10;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background-color: #1e293b;
+        }
+
+        .status-none { background-color: #ffffff; border: 1px solid #e2e8f0; }
+        .status-hantar { background-color: #22c55e; color: white; border: 1px solid #16a34a; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+        .status-tidak { background-color: #ef4444; color: white; border: 1px solid #dc2626; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
+
+        .podium-1 { height: 120px; background: linear-gradient(to top, #fcd34d, #fbbf24); }
+        .podium-2 { height: 90px; background: linear-gradient(to top, #cbd5e1, #94a3b8); }
+        .podium-3 { height: 60px; background: linear-gradient(to top, #d97706, #b45309); }
+
+        .animate-bounce-slow {
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-5%); }
+            50% { transform: translateY(0); }
+        }
+
+        @media (max-width: 640px) {
+            .name-cell { min-width: 110px; font-size: 0.75rem; }
+        }
+    </style>
+</head>
+<body class="p-3 md:p-8">
+
+    <!-- Tajuk Utama -->
+    <header class="mb-8 text-center">
+        <h1 class="text-3xl md:text-5xl font-extrabold text-slate-800">
+            Semakan Aktiviti Wordwall <br>
+            <span class="text-indigo-600">Bahasa Cina SK Subang Jaya</span>
+        </h1>
+        <div class="mt-4 flex flex-wrap justify-center gap-6 text-sm">
+            <div class="flex items-center gap-2"><span class="w-5 h-5 bg-green-500 rounded-full"></span> <span>Sudah Hantar</span></div>
+            <div class="flex items-center gap-2"><span class="w-5 h-5 bg-red-500 rounded-full"></span> <span>Belum Hantar</span></div>
+            <div class="flex items-center gap-2 text-slate-400"><i>*Klik sel untuk tukar status</i></div>
+        </div>
+    </header>
+
+    <!-- Dashboard Kawalan -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 lg:col-span-3 flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[150px]">
+                <label class="text-xs font-bold text-slate-500 uppercase">Tapis Tahun</label>
+                <select id="filterTahun" onchange="renderAll()" class="w-full p-2.5 mt-1 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500">
+                    <option value="Semua">Semua Tahun</option>
+                    <option value="Tahun 1">Tahun 1</option>
+                    <option value="Tahun 2">Tahun 2</option>
+                    <option value="Tahun 3">Tahun 3</option>
+                    <option value="Tahun 4">Tahun 4</option>
+                    <option value="Tahun 5">Tahun 5</option>
+                    <option value="Tahun 6">Tahun 6</option>
+                </select>
+            </div>
+            <div class="flex-1 min-w-[150px]">
+                <label class="text-xs font-bold text-slate-500 uppercase">Tapis Bulan</label>
+                <select id="filterBulan" onchange="renderAll()" class="w-full p-2.5 mt-1 border rounded-xl bg-slate-50 focus:ring-2 focus:ring-indigo-500">
+                    <option value="Semua">Semua Bulan</option>
+                    <option value="01">Januari</option><option value="02">Februari</option><option value="03">Mac</option>
+                    <option value="04">April</option><option value="05">Mei</option><option value="06">Jun</option>
+                    <option value="07">Julai</option><option value="08">Ogos</option><option value="09">September</option>
+                    <option value="10">Oktober</option><option value="11">November</option><option value="12">Disember</option>
+                </select>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openAdminModal()" class="bg-slate-800 text-white px-5 py-2.5 rounded-xl hover:bg-black transition font-semibold">Urus Murid</button>
+                <button onclick="generatePDF()" class="bg-rose-600 text-white px-5 py-2.5 rounded-xl hover:bg-rose-700 transition font-semibold">Cetak PDF</button>
+            </div>
+        </div>
+        
+        <!-- Quick Stats Total -->
+        <div class="bg-indigo-600 p-4 rounded-2xl shadow-lg text-white flex flex-col justify-center items-center">
+            <span class="text-xs opacity-80 uppercase font-bold">Jumlah Keseluruhan Hantaran</span>
+            <span id="totalGlobalHantaran" class="text-4xl font-black">0</span>
+        </div>
+    </div>
+
+    <!-- Jadual Utama -->
+    <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 mb-8">
+        <div class="overflow-x-auto max-h-[60vh]">
+            <table class="w-full text-left border-collapse" id="wordwallTable">
+                <thead class="sticky-header text-white">
+                    <tr id="tableHeader"></tr>
+                </thead>
+                <tbody id="tableBody" class="text-slate-700"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SEKSYEN ANALISIS & PODIUM -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        
+        <!-- Podium Ganjaran -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col">
+            <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                🏆 Podium Murid Cemerlang
+            </h3>
+            <div id="podiumContainer" class="flex items-end justify-center gap-2 md:gap-4 mt-auto py-4">
+                <!-- Podium Populated by JS -->
+            </div>
+        </div>
+
+        <!-- Top 10 List -->
+        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+            <h3 class="text-xl font-bold text-slate-800 mb-6">📊 Analisis Murid (Top 10)</h3>
+            <div id="topListContainer" class="space-y-3">
+                <!-- Top List Populated by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Modal (Murid & Tarikh) -->
+    <div id="adminModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-2xl p-8 shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">Pengurusan Dashboard</h2>
+                <button onclick="closeAdminModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-bold mb-2">Pilih Tahun:</label>
+                    <select id="adminTahun" class="w-full p-3 border rounded-xl bg-slate-50">
+                        <option value="Tahun 1">Tahun 1</option>
+                        <option value="Tahun 2">Tahun 2</option>
+                        <option value="Tahun 3">Tahun 3</option>
+                        <option value="Tahun 4">Tahun 4</option>
+                        <option value="Tahun 5">Tahun 5</option>
+                        <option value="Tahun 6">Tahun 6</option>
+                    </select>
+                </div>
+                <div class="flex items-end">
+                    <button onclick="tambahMuridPukal()" class="w-full bg-indigo-600 text-white p-3 rounded-xl font-bold hover:bg-indigo-700 transition">Kemaskini Senarai Murid</button>
+                </div>
+            </div>
+            
+            <textarea id="adminNamaList" rows="6" class="w-full p-4 border rounded-2xl font-mono text-sm bg-slate-50 mb-6" placeholder="Masukkan nama murid (Satu baris satu nama)"></textarea>
+            
+            <div class="flex flex-wrap gap-3">
+                <button onclick="urusTarikhLajur()" class="bg-orange-500 text-white px-6 py-3 rounded-xl font-bold">📅 Urus Tarikh Lajur</button>
+                <button onclick="resetDataConfirm()" class="bg-slate-100 text-red-600 px-6 py-3 rounded-xl font-bold ml-auto hover:bg-red-50">Padam Semua</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Picker Modal -->
+    <div id="dateModal" class="fixed inset-0 bg-black/60 hidden z-[60] flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl w-full max-w-sm p-8 shadow-2xl">
+            <h2 class="text-xl font-bold mb-4">Set Tarikh Aktiviti</h2>
+            <div class="space-y-5">
+                <input type="hidden" id="activeLajurIdx">
+                <div>
+                    <label class="block text-sm font-bold mb-2">Pilih Tarikh:</label>
+                    <input type="date" id="inputTarikhBaru" class="w-full p-3 border rounded-xl bg-slate-50">
+                </div>
+                <button onclick="simpanTarikhLajur()" class="w-full bg-green-600 text-white p-4 rounded-xl font-bold text-lg">Sahkan Tarikh</button>
+                <button onclick="document.getElementById('dateModal').classList.add('hidden')" class="w-full text-slate-400 font-medium">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Data State
+        let students = JSON.parse(localStorage.getItem('ww_v2_students')) || [];
+        let dates = JSON.parse(localStorage.getItem('ww_v2_dates')) || Array.from({length: 40}, (_, i) => ({ id: i, date: '' }));
+        let attendance = JSON.parse(localStorage.getItem('ww_v2_attendance')) || {};
+
+        function saveToLocal() {
+            localStorage.setItem('ww_v2_students', JSON.stringify(students));
+            localStorage.setItem('ww_v2_dates', JSON.stringify(dates));
+            localStorage.setItem('ww_v2_attendance', JSON.stringify(attendance));
+        }
+
+        // Render Functions
+        function renderAll() {
+            renderTable();
+            renderAnalysis();
+        }
+
+        function renderTable() {
+            const filterTahun = document.getElementById('filterTahun').value;
+            const filterBulan = document.getElementById('filterBulan').value;
+            const headerRow = document.getElementById('tableHeader');
+            const tableBody = document.getElementById('tableBody');
+            
+            // Header
+            let hHtml = `
+                <th class="p-4 text-center sticky-col z-30 bg-slate-800 w-12 border-r border-slate-700">Bil</th>
+                <th class="p-4 sticky-col z-30 left-[55px] bg-slate-800 min-w-[150px] border-r border-slate-700 text-sm">Nama Murid</th>
+            `;
+
+            const visibleDates = dates.filter(d => {
+                if (filterBulan === 'Semua') return true;
+                if (!d.date) return false;
+                return String(new Date(d.date).getMonth() + 1).padStart(2, '0') === filterBulan;
+            });
+
+            visibleDates.forEach((d) => {
+                const display = d.date ? formatShortDate(d.date) : `A${d.id + 1}`;
+                hHtml += `<th class="p-3 text-center min-w-[70px] cursor-pointer hover:bg-slate-700 border-r border-slate-700 text-xs" onclick="showDatePicker(${d.id})">${display}</th>`;
+            });
+            hHtml += `<th class="p-4 text-center bg-indigo-700 sticky right-0 z-30 min-w-[60px]">Jum</th>`;
+            headerRow.innerHTML = hHtml;
+
+            // Body
+            const filteredStudents = students.filter(s => filterTahun === 'Semua' || s.tahun === filterTahun);
+            let bHtml = '';
+            let totalHantaranKeseluruhan = 0;
+
+            filteredStudents.forEach((s, sIdx) => {
+                let count = 0;
+                let rHtml = `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                        <td class="p-3 text-center sticky-col z-10 font-bold text-slate-400 bg-white border-r border-slate-100">${sIdx + 1}</td>
+                        <td class="p-3 sticky-col z-10 left-[55px] bg-white border-r border-slate-100 name-cell">
+                            <div class="font-bold text-slate-800 uppercase leading-tight">${s.nama}</div>
+                            <div class="text-[10px] text-indigo-500 font-bold">${s.tahun}</div>
+                        </td>
+                `;
+
+                visibleDates.forEach((d) => {
+                    const status = attendance[`${s.id}_${d.id}`] || 0;
+                    if (status === 1) { count++; totalHantaranKeseluruhan++; }
+                    
+                    const cls = status === 1 ? 'status-hantar' : status === 2 ? 'status-tidak' : 'status-none';
+                    const icon = status === 1 ? '✓' : status === 2 ? '✗' : '';
+
+                    rHtml += `
+                        <td class="p-2 border-r border-slate-50 text-center">
+                            <div onclick="cycleStatus('${s.id}', ${d.id})" class="w-9 h-9 mx-auto rounded-xl cursor-pointer flex items-center justify-center text-lg font-black transition-all active:scale-90 ${cls}">
+                                ${icon}
+                            </div>
+                        </td>
+                    `;
+                });
+
+                rHtml += `
+                    <td class="p-3 text-center sticky right-0 z-10 bg-indigo-50 font-black text-indigo-700 border-l border-indigo-200">
+                        ${count}
+                    </td>
+                </tr>`;
+                bHtml += rHtml;
+            });
+
+            tableBody.innerHTML = bHtml || `<tr><td colspan="100%" class="p-12 text-center text-slate-400">Tiada data murid. Sila tambahkan murid di Urus Murid.</td></tr>`;
+            document.getElementById('totalGlobalHantaran').innerText = totalHantaranKeseluruhan;
+        }
+
+        function renderAnalysis() {
+            const filterTahun = document.getElementById('filterTahun').value;
+            const filteredStudents = students.filter(s => filterTahun === 'Semua' || s.tahun === filterTahun);
+            
+            // Calculate scores
+            const scoreboard = filteredStudents.map(s => {
+                let total = 0;
+                dates.forEach((_, dIdx) => {
+                    if (attendance[`${s.id}_${dIdx}`] === 1) total++;
+                });
+                return { ...s, total };
+            }).sort((a, b) => b.total - a.total);
+
+            // Render Podium (Top 3)
+            const podiumContainer = document.getElementById('podiumContainer');
+            if (scoreboard.length > 0) {
+                const top3 = [scoreboard[1], scoreboard[0], scoreboard[2]]; // Order: 2nd, 1st, 3rd for layout
+                
+                podiumContainer.innerHTML = top3.map((m, i) => {
+                    if (!m) return `<div class="w-24"></div>`;
+                    const pos = i === 0 ? 2 : i === 1 ? 1 : 3;
+                    const pClass = `podium-${pos}`;
+                    const trophy = pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉';
+                    
+                    return `
+                        <div class="flex flex-col items-center w-24 md:w-32">
+                            <div class="text-center mb-2">
+                                <p class="text-[10px] font-bold text-slate-500 uppercase truncate w-24">${m.nama}</p>
+                                <p class="text-xl font-black text-slate-800">${m.total}</p>
+                            </div>
+                            <div class="${pClass} w-full rounded-t-2xl flex items-center justify-center text-3xl shadow-lg relative">
+                                <span class="${pos === 1 ? 'animate-bounce-slow' : ''}">${trophy}</span>
+                                <span class="absolute -bottom-2 text-[10px] font-black text-white bg-black/20 px-2 rounded-full">${pos}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } else {
+                podiumContainer.innerHTML = `<p class="text-slate-400 italic">Data belum cukup untuk analisis podium</p>`;
+            }
+
+            // Render Top 10 List
+            const listContainer = document.getElementById('topListContainer');
+            const top10 = scoreboard.slice(0, 10);
+            
+            if (top10.length > 0) {
+                listContainer.innerHTML = top10.map((m, i) => `
+                    <div class="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                        <div class="flex items-center gap-3">
+                            <span class="w-6 h-6 flex items-center justify-center bg-white rounded-full text-xs font-bold text-slate-400 shadow-sm">${i+1}</span>
+                            <div>
+                                <p class="text-sm font-bold text-slate-700">${m.nama}</p>
+                                <p class="text-[9px] text-indigo-500 font-bold uppercase">${m.tahun}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full text-xs font-black">${m.total} Skor</span>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                listContainer.innerHTML = `<p class="text-slate-400 text-center py-4 italic">Tiada data murid tersedia</p>`;
+            }
+        }
+
+        // Logic
+        function cycleStatus(studentId, dateIdx) {
+            const key = `${studentId}_${dateIdx}`;
+            let current = attendance[key] || 0;
+            attendance[key] = (current + 1) % 3;
+            saveToLocal();
+            renderAll();
+        }
+
+        function formatShortDate(dateStr) {
+            const d = new Date(dateStr);
+            return `${d.getDate()}/${d.getMonth() + 1}`;
+        }
+
+        // Modals
+        function openAdminModal() { document.getElementById('adminModal').classList.remove('hidden'); }
+        function closeAdminModal() { document.getElementById('adminModal').classList.add('hidden'); }
+
+        function tambahMuridPukal() {
+            const list = document.getElementById('adminNamaList').value.split('\n');
+            const tahun = document.getElementById('adminTahun').value;
+            let addedCount = 0;
+
+            list.forEach(name => {
+                if (name.trim()) {
+                    const exists = students.find(s => s.nama.toLowerCase() === name.trim().toLowerCase() && s.tahun === tahun);
+                    if (!exists) {
+                        students.push({
+                            id: 'S' + Math.random().toString(36).substr(2, 9),
+                            nama: name.trim().toUpperCase(),
+                            tahun: tahun
+                        });
+                        addedCount++;
+                    }
+                }
+            });
+            saveToLocal();
+            renderAll();
+            alert(`${addedCount} murid berjaya ditambahkan ke ${tahun}`);
+        }
+
+        function showDatePicker(idx) {
+            document.getElementById('activeLajurIdx').value = idx;
+            document.getElementById('inputTarikhBaru').value = dates[idx].date;
+            document.getElementById('dateModal').classList.remove('hidden');
+        }
+
+        function simpanTarikhLajur() {
+            const idx = document.getElementById('activeLajurIdx').value;
+            dates[idx].date = document.getElementById('inputTarikhBaru').value;
+            saveToLocal();
+            renderAll();
+            document.getElementById('dateModal').classList.add('hidden');
+        }
+
+        function resetDataConfirm() {
+            if (confirm("AWAS! Ini akan memadamkan SEMUA rekod dan senarai murid. Teruskan?")) {
+                localStorage.removeItem('ww_v2_students');
+                localStorage.removeItem('ww_v2_dates');
+                localStorage.removeItem('ww_v2_attendance');
+                location.reload();
+            }
+        }
+
+        async function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4');
+            const filterTahun = document.getElementById('filterTahun').value;
+            
+            doc.setFontSize(18);
+            doc.text(`REKOD WORDWALL: ${filterTahun.toUpperCase()}`, 14, 15);
+            doc.setFontSize(10);
+            doc.text(`Dicetak: ${new Date().toLocaleString()} | Sekolah Kebangsaan Subang Jaya`, 14, 22);
+
+            const filteredStudents = students.filter(s => filterTahun === 'Semua' || s.tahun === filterTahun);
+            const activeDates = dates.filter(d => d.date);
+
+            const head = [['Bil', 'Nama Murid', 'Tahun', ...activeDates.map(d => formatShortDate(d.date)), 'Jum']];
+            const body = filteredStudents.map((s, idx) => {
+                let total = 0;
+                const row = [idx + 1, s.nama, s.tahun];
+                activeDates.forEach(d => {
+                    const st = attendance[`${s.id}_${d.id}`] || 0;
+                    if (st === 1) { row.push('Y'); total++; }
+                    else if (st === 2) row.push('T');
+                    else row.push('');
+                });
+                row.push(total);
+                return row;
+            });
+
+            doc.autoTable({
+                startY: 28,
+                head: head,
+                body: body,
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229] },
+                styles: { fontSize: 7 }
+            });
+
+            window.open(doc.output('bloburl'), '_blank');
+        }
+
+        // Init
+        window.onload = renderAll;
+    </script>
+</body>
+</html>
+
